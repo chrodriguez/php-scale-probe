@@ -1,0 +1,15 @@
+version: '3'
+services:
+  app:
+    image: php:7-apache
+    volumes:
+      - ./www-conf/apache-tune.conf:/etc/apache2/conf-enabled/apache-tune.conf
+      - ./www:/var/www/html
+    environment:
+      VIRTUAL_HOST: php-scale.probe
+  lb:
+    image: jwilder/nginx-proxy
+    ports:
+      - "8090:80"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro

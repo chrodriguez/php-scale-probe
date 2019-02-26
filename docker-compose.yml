@@ -1,0 +1,9 @@
+version: '3'
+services:
+  app:
+    image: php:7-apache
+    volumes:
+      - ./www-conf/apache-tune.conf:/etc/apache2/conf-enabled/apache-tune.conf
+      - ./www:/var/www/html
+    ports:
+      - "8080:80"
