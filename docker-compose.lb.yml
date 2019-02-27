@@ -12,4 +12,5 @@ services:
     ports:
       - "8090:80"
     volumes:
+      - ./www-conf/nginx-proxy.conf:/etc/nginx/conf.d/custom_proxy.conf
       - /var/run/docker.sock:/tmp/docker.sock:ro
