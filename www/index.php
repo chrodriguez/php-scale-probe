@@ -4,6 +4,6 @@ Wait....
 <?php 
   flush();
   ob_flush();
-  sleep(10);
+  sleep(2);
 ?>
 Done!
