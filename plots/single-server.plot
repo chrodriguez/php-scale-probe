@@ -25,5 +25,6 @@ set datafile separator '\t'
 # Plot the data
 #plot "plot-apache-60.tsv" using 2:5 title 'response time' with points
 plot "data/plot-apache-10.tsv" using 5 smooth sbezier with lines title "10 concurrent requests", \
-     "data/plot-apache-3.tsv" using 5 smooth sbezier with lines title "3 concurrent requests"
+     "data/plot-apache-3.tsv" using 5 smooth sbezier with lines title "3 concurrent requests", \
+     "data/plot-apache-2.tsv" using 5 smooth sbezier with lines title "2 concurrent requests"
 exit
