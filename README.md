@@ -1,7 +1,7 @@
 # Prueba de concepto sobre el escalado con PHP
 
-Asumiendo que se Configuras apache para que soporte un máximo de 2 clientes de
-forma simultánea, basada en la configuracion provista en
+Asumiendo que configuramos apache para que soporte un máximo de 2 clientes de
+forma simultánea, basada en la configuración provista en
 `www-conf/apache-tune.conf`, podemos verificar el funcionamiento con la
 siguiente configuración de docker-compose:
 
@@ -16,40 +16,32 @@ services:
     ports:
       - "8080:80"
 ```
-Asumiendo que el código PHP en `www/index.php` demora aproximadamente **10
+Asumiendo que el código PHP en `www/index.php` demora aproximadamente **2
 segundos** en responder por como está generado tal script, podemos evidenciar
 los resultados con el siguiente ejemplo
 
 ```
-tmux new-session \
-    'curl localhost:8080 && echo Press ENTER && read' \; \
-  split-window \
-    'curl localhost:8080 && echo Press ENTER && read' \; \
-  split-window \
-    'curl localhost:8080 && echo Press ENTER && read'
+ab -l -c10 -n600 http://localhost:8080/ 
 ```
 
-O más simple, con ab, podemos ver que:
+Demora 600 segundos porque secuencialmente se prueba cada conexion, dando como
+resultado que cada requerimiento se sirve en 2 segundos, pero con un tiempo
+promedio de 10 segundos, esto es 5 veces más de lo esperado
 
 ```
-ab -l -c1 -n4 http://localhost:8080/ 
+ab -l -c3 -n600 http://localhost:8080/
 ```
 
-Demora 40 segundos porque secuencialmente se prueba cada conexion, demorando el
-test completo 40 segundos aproximadamente y dando un resultado de 0.09
-conexiones por segundo
-
-```
-ab -l -c4 -n4 http://localhost:8080/
-```
-
-Este comando ahora demora 20 segundos, porque se prueban concurrentemente 4
-clientes, y se pueden atender de a dos simultáneamente, dando un resultado de
-0.20 conexiones por segundo.
+Este comando ahora demora también 600 segundos, dando como resultado que cada
+requerimiento se sirve en aproximadamente 4 segundos, esto es el doble de lo
+esperado
 
 Cuantos más clientes agreguemos, los tiempos se irán incrementando porque el
-servidor encolará pedidos que irá atendiendo mientras no expire la conexión TCP
+servidor encolará pedidos que irá atendiendo mientras no expire la conexión HTTP
 iniciada.
+
+Los resultados pueden analizarse mejor usando la opción de `ab` que exporta los
+resultados en TSV para luego graficar con [GnuPlot](http://www.gnuplot.info/)
 
 ## Mejorando los resultados con escalamiento
 
@@ -72,7 +64,6 @@ De esta forma, podremos verificar lo siguiente:
 
 Iniciamos una aplicación detrás del proxy reverso:
 
-
 ```
 docker-compose -p php-scale-probe-lb -f docker-compose.lb.yml up
 ```
@@ -86,43 +77,19 @@ Podemos verificar el funcionamiento de la siguiente forma:
 curl -H 'Host: php-scale.probe' http://localhost:8090/
 ```
 
-Probamos con tres conexiones simultáneas:
+Probamos con ab usando nuevamente 10 conexiones concurrentes:
 
 ```
-tmux new-session \
-    'curl -H "Host: php-scale.probe" localhost:8090 && echo Press ENTER && read' \; \
-  split-window \
-    'curl -H "Host: php-scale.probe" localhost:8090 && echo Press ENTER && read' \; \
-  split-window \
-    'curl -H "Host: php-scale.probe" localhost:8090 && echo Press ENTER && read'
+ab -l -c10 -n 600 -H 'Host: php-scale.probe' http://localhost:8090/
 ```
-
-Notamos que el tercer cliente recibe un 504. Este mismo resultado con ab sería:
-
-```
-ab -l -c3 -n3 -H "Host: php-scale.probe" http://localhost:8090/
-```
-
-Debería obtenerse 1 requerimiento fallido en 10 segundos
 
 ### Escalando la app
 
 Si escalamos el web server usando:
 
 ```
-docker-compose -f docker-compose.lb.yml up --scale app=3 -d
+docker-compose -f docker-compose.lb.yml up --scale app=2 -d
 ```
 
-Ahora podríamos atender 6 clientes de forma simultánea:
+Ahora podríamos atender más clientes en menos tiempo
 
-```
-ab -l -c12 -n12 -H "Host: php-scale.probe" http://localhost:8090/
-```
-
-Deberían obtenerse un promedio de 6 requerimientos exitosos en 10 segundos, y
-pueden variar según como se manejan los timeouts del nginx que generalmente
-marcan como no disponibles a los upstream por 10 segundos por defecto
-
-_**Es importante destacar que entre pruebas debe esperarse al menos 1 minuto 
-para que no queden procesos de apache ocupados, ni upstreams marcados en el
-proxy reverso**__
