@@ -24,7 +24,7 @@ los resultados con el siguiente ejemplo
 ab -l -c10 -n600 http://localhost:8080/ 
 ```
 
-Demora 600 segundos porque secuencialmente se prueba cada conexion, dando como
+Demora 600 segundos porque secuencialmente se prueba cada conexión, dando como
 resultado que cada requerimiento se sirve en 2 segundos, pero con un tiempo
 promedio de 10 segundos, esto es 5 veces más de lo esperado
 
@@ -92,4 +92,29 @@ docker-compose -f docker-compose.lb.yml up --scale app=2 -d
 ```
 
 Ahora podríamos atender más clientes en menos tiempo
+
+## Usando vegeta para las pruebas
+
+Alternativamente a las pruebas con ab, podemos usar [Vegeta](https://github.com/tsenart/vegeta) para realizar las pruebas de stress.
+Con Vegeta podemos obtener otras métricas que no son visibles con ab. La forma
+de ejecutar las pruebas serían:
+
+### Probar un server sin load balancer
+
+```
+
+```
+
+### Probar N servers detras del load balancer
+
+El siguiente comando prueba una conexión al host 127.0.0.1 puerto 8090, usando
+como cabecera HTTP `Host: php-scale.probe`. Luego ataca con vegeta con 10
+requerimientos por segundo, cada uno que intente durante 120 segundos sin dar un
+timeout, durante 60 segundos de prueba. Esto da 600 requerimientos en un segundo
+
+```
+echo -e "GET http://127.0.0.1:8090/\nHost: php-scale.probe" | \
+  vegeta attack -name=10qps -rate=10 -duration=60s --timeout=120s > \
+  /tmp/results.10qps.bin
+```
 
