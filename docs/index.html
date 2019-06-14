@@ -144,6 +144,72 @@
           <section>
           <h1>Las pruebas</h1>
           </section>
+          <section>
+          <h2>El problema</h2>
+          <ul>
+            <li class="fragment fade-in-then-semi-out">El script PHP que hemos desarrollado simpre demorará 2 segundos en responder.
+              <ul>
+                <li>Un tiempo poco razonable y exagerado para analizar con mayor precisión nuestras pruebas.</li>
+              </ul>
+            </li>
+            <li class="fragment fade-in-then-semi-out">La idea no es analizar el consumo de recursos, sino justamente las limitaciones impuestas por configuraciones de los Application/Web Servers y Load Balancers
+              <ul>
+                <li>El Web Server utilizado para las pruebas es Apache en modo pre-fork por servir contenido PHP</li>
+                <li>El Load Balancer utilizado para las pruebas es Nginx</li>
+              </ul>
+            </li>
+          </ul>
+          </section>
+          <section>
+            <h2>Docker para las pruebas</h2>
+            Sin crear una imagen, y simplemente utilizando volumenes docker logramos realizar nuestras pruebas, utilizando <strong>docker-compose</strong>:
+            <pre><code data-trim class="yaml">
+              version: '3'
+              services:
+                app:
+                  image: php:7-apache
+                  volumes:
+                    - ./www-conf/apache-tune.conf:/etc/apache2/conf-enabled/apache-tune.conf
+                    - ./www:/var/www/html
+                  ports:
+                    - "8080:80"
+            </code></pre>
+          </section>
+          <section>
+            <h2>El script PHP</h2>
+            <pre><code data-trim class="php" data-line-numbers="7">
+              Wellcome, my hostname is: <?php echo $_SERVER['SERVER_ADDR']; ?>
+
+              Wait....
+              <?php 
+                flush();
+                ob_flush();
+                sleep(2);
+              ?>
+              Done!
+            </code></pre>
+          </section>
+          <section>
+          <h2>Prueba 1</h2>
+          <ul>
+            <li class="fragment fade-in-then-semi-out">El servidor web limita la cantidad de conexiones concurrentes a 2.</li>
+            <li class="fragment fade-in-then-semi-out">Esperamos entonces:
+              <ul>
+                <li>Dos clientes pueden conectarse simultáneamente.</li>
+                <li>Cada requerimiento se sirve en 2 segundos por el delay del script PHP.</li>
+                <li>Esperamos entonces poder servir 60 requerimientos por minuto.</li>
+              </ul>
+            </li>
+          </ul>
+          <pre class="fragment"><code data-trim>
+            ab -l -c2 -n600 http://localhost:8080/
+          </code>
+          </pre>
+          </section>
+          <section>
+            <h2>Prueba 1</h2>
+            Los 
+          </section>
         </section>
 			</div>
 		</div>
