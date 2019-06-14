@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>reveal.js</title>
+
+		<link rel="stylesheet" href="css/reset.css">
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/serif.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/monokai.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+          <h3>Evaluating Performance of Web Applications in (Cloud) Virtualized
+          Environments</h3>
+          <p>
+          <small>
+          por <a href="mailto:fernando@info.unlp.edu.ar">Fernando G. Tinetti</a> & 
+          <a href="mailto:car@info.unlp.edu.ar">Christian A. Rodríguez</a>
+          </small>
+          </p>
+          <p style="font-size: smaller">
+          VII Jornadas de Cloud Computing & Big Data
+          </p>
+        </section>
+				<section>
+          <h2>Temas</h2>
+          <ul>
+            <li>Introducción</li>
+            <li>Problemas</li>
+            <li>Las Pruebas</li>
+            <li>Conclusiones</li>
+          </ul>
+        </section>
+        <section>
+          <section><h1>Introducción</h1></section>
+          <section> 
+            <h2>Desarrollo & Operaciones</h2>
+            <ul>
+              <li class="fragment fade-in-then-semi-out">Evolución dispar de las áreas de desarrollo de SW y la de operaciones:
+              <ul>
+                <li>Desarrollo produce nuevos releases con mayor frecuencia.</li>
+                <li>Operaciones debe automatizar los despliegues.</li>
+              </li>
+              </ul>
+              <li class="fragment fade-in-then-semi-out">Ante la creciente popularidad de un desarrollo web,
+                los accesos concurrentes al sistema aumentan y aparencen:
+                <ul>
+                  <li>Fallas del sistema.</li>
+                  <li>Tiempos de respuesta inaceptables.</li>
+                  <li>No disponibilidad de servicio.</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+          <section>
+            <h2>Escalabilidad</h2>
+            <ul>
+              <li class="fragment fade-in-then-semi-out">Escalar una aplicación puede hacerse en varias dimensiones, dependiendo de la aplicación.</li>
+              <li class="fragment fade-in-then-semi-out">Operaciones dispone de herramientas que simplifican el escalado:
+                <ul>
+                  <li>Virtualización</li>
+                  <li>IaC</li>
+                  <li>Proveedores de Cloud</li>
+                </ul>
+              </li>
+            </ul>
+            <p class="fragment">Pero el escalado sobreestimado produce un costo monetario inaceptable</p>
+          </section>
+          <section>
+            <h2>El uso de Cloud</h2>
+            <ul>
+              <li class="fragment fade-in-then-semi-out">Existen niveles de adopción diferentes de los servicios provistos.</li>
+              <li class="fragment fade-in-then-semi-out">Inicialmente es posible replicar la infraestructura on-premises.</li>
+              <li class="fragment fade-in-then-semi-out">Es posible eliminar servidores que se contratan como servicios:
+                <ul>
+                  <li>Bases de datos</li>
+                  <li>Load Balancer</li>
+                  <li>CDN</li>
+                </ul>
+              </li>
+              <li class="fragment fade-in-then-semi-out">Simple automatización y herramientas que interactúan con la API.</li>
+          </section>
+          <section>
+            <h2>Consideraciones para escalar aplicaciones web</h2>
+            <ul>
+              <li class="fragment fade-in-then-semi-out">Idealmente las aplicaciones deben ser diseñadas sin estado.</li>
+              <li class="fragment fade-in-then-semi-out">Si requieren mantener estado, entonces debemos mover el estado fuera de la aplicación:
+                <em>filesystem, base de datos o bases NoSQL como Memcached o Redis</em>.</li>
+              <li class="fragment fade-in-then-semi-out">Sticky sessions. <span class="fragment"><em><strong>Evitar esta práctica.</strong></em></span></li>
+              <li class="fragment fade-in-then-semi-out"><a href="https://12factor.net/">Twelve Factor App</a> enumera buenas prácticas a seguir</li>
+            </ul>
+            <p class="fragment" style="font-size: smaller">Incluso se complica aún más el escalamiento en servicios como filesystems o bases de datos</p>
+          </section>
+          <section>
+            <h2>Nuestra investigación</h2>
+            <ul>
+              <li class="fragment fade-in-then-semi-out">Asumiendo una aplicación web desarrollada cumpliendo que:
+                <ul>
+                  <li>Sea escalable.</li>
+                  <li>Desarrollada en un lenguaje dinámico, que requiere de un Aplication Server: PHP</li>
+                  <li>Fija el tiempo de respuesta constante para realizar pruebas.</li>
+                </ul>
+              </li>
+              <li class="fragment fade-in-then-semi-out">Configuraciones del Web/Application Server.</li>
+              <li class="fragment fade-in-then-semi-out">Configuraciones del Reverse Proxy que permitirá el escalamiento y balanceo</li>
+              <li class="fragment fade-in-then-semi-out">Probar diferentes configuraciones y analizar los resultados</li>
+            </ul>
+          </section>
+          <section>
+            <h2>Nuestra investigación</h2>
+            <ul>
+              <li class="fragment fade-in-then-semi-out">Las pruebas podrían haberse usando:
+                <ul>
+                  <li>Servidores físicos o virtuales en la infreatructura local.</li>
+                  <li>En algún proveedor de Cloud.</li>
+                </ul>
+              </li>
+              <li class="fragment fade-in-then-semi-out">Cualquiera de las anteriores puede llevarse adelante usando IaC o docker.
+                <ul>
+                  <li>Por cuestiones de simplicidad elegimos docker.</li>
+                </ul>
+              </li>
+              <li class="fragment fade-in-then-semi-out">Las pruebas se encuentran disponibles en <a href="https://github.com/chrodriguez/php-scale-probe">GitHub</a></li>
+            </ul>
+          </section>
+        </section>
+        <section>
+          <section>
+          <h1>Las pruebas</h1>
+          </section>
+        </section>
+			</div>
+		</div>
+
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+        hash: true,
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true }
+				]
+			});
+		</script>
+	</body>
+</html>
