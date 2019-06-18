@@ -136,7 +136,8 @@
                   <li>Por cuestiones de simplicidad elegimos docker.</li>
                 </ul>
               </li>
-              <li class="fragment fade-in-then-semi-out">Las pruebas se encuentran disponibles en <a href="https://github.com/chrodriguez/php-scale-probe">GitHub</a></li>
+              <li class="fragment fade-in-then-semi-out">Las pruebas se encuentran disponibles en <a href="https://github.com/chrodriguez/php-scale-probe">GitHub</a>.</li>
+              <li class="fragment fade-in-then-semi-out"><strong>Disparadores de escalamiento:</strong> <em>generalmente asociado a recursos limitados. Estos recursos pueden optimizarse mediante configuraciones de cada componente del sistema.</em></li> 
             </ul>
           </section>
         </section>
@@ -145,25 +146,39 @@
           <h1>Las pruebas</h1>
           </section>
           <section>
-          <h2>El problema</h2>
+          <h2>Contexto de las pruebas</h2>
           <ul>
             <li class="fragment fade-in-then-semi-out">El script PHP que hemos desarrollado simpre demorará 2 segundos en responder.
               <ul>
                 <li>Un tiempo poco razonable y exagerado para analizar con mayor precisión nuestras pruebas.</li>
               </ul>
             </li>
-            <li class="fragment fade-in-then-semi-out">La idea no es analizar el consumo de recursos, sino justamente las limitaciones impuestas por configuraciones de los Application/Web Servers y Load Balancers
+            <li class="fragment fade-in-then-semi-out">La idea no es analizar el consumo de recursos, sino justamente las limitaciones impuestas por configuraciones de los Application/Web Servers y Load Balancers:
               <ul>
-                <li>El Web Server utilizado para las pruebas es Apache en modo pre-fork por servir contenido PHP</li>
-                <li>El Load Balancer utilizado para las pruebas es Nginx</li>
+                <li>El Web Server utilizado para las pruebas es Apache en modo pre-fork por servir contenido PHP.</li>
+                <li>El Load Balancer utilizado para las pruebas es Nginx.</li>
               </ul>
             </li>
           </ul>
           </section>
           <section>
-            <h2>Docker para las pruebas</h2>
+          <h2>Contexto de las pruebas</h2>
+          <ul>
+            <li class="fragment fade-in-then-semi-out">Las capacidades de un Application/Web Server la determina:
+              <ul>
+                <li>Cantidad de núcleos</li>
+                <li>Cantidad de memoria</li>
+                <li><strong>Consumo de memoria de la aplicación</strong></li>
+              </ul>
+            </li>
+            <li class="fragment fade-in-then-semi-out">La ecuación del límite de concurrencia está dado por los valores antes mencionados y por el <strong>el tiempo de respuesta.</strong></li>
+            <li class="fragment fade-in-then-semi-out">Analizamos cómo se maximizan los resultados a través del escalamiento horizontal, manteniendo constante el tiempo de respuesta.</li>
+          </ul>
+          </section>
+          <section>
+            <h3>Docker para la prueba de un servidor</h3>
             Sin crear una imagen, y simplemente utilizando volumenes docker logramos realizar nuestras pruebas, utilizando <strong>docker-compose</strong>:
-            <pre><code data-trim class="yaml">
+            <pre><code data-line-numbers data-trim class="yaml">
               version: '3'
               services:
                 app:
@@ -176,21 +191,32 @@
             </code></pre>
           </section>
           <section>
-            <h2>El script PHP</h2>
-            <pre><code data-trim class="php" data-line-numbers="7">
-              Wellcome, my hostname is: <?php echo $_SERVER['SERVER_ADDR']; ?>
-
-              Wait....
-              <?php 
-                flush();
-                ob_flush();
-                sleep(2);
-              ?>
-              Done!
+            <h3>La concurrencia en el web server</h3>
+            <pre><code data-trim class="apache" data-line-numbers>
+              MaxRequestWorkers 2
+              StartServers 1
+              MinSpareServers 1
+              ServerLimit 2
+              KeepAlive Off
             </code></pre>
           </section>
           <section>
-          <h2>Prueba 1</h2>
+            <h2>El script PHP</h2>
+            <pre><code data-trim class="php" data-line-numbers>
+              Wellcome, my hostname is: &lt;?php echo $_SERVER['SERVER_ADDR']; ?&gt;
+
+              Wait....
+              &lt;?php 
+                flush();
+                ob_flush();
+                sleep(2);
+              ?&gt;
+              Done!
+            </code></pre>
+            <small>Como puede observarse, el tiempo de respuesta se fija en 2 segundos</small>
+          </section>
+          <section>
+          <h2>Prueba con un único servidor</h2>
           <ul>
             <li class="fragment fade-in-then-semi-out">El servidor web limita la cantidad de conexiones concurrentes a 2.</li>
             <li class="fragment fade-in-then-semi-out">Esperamos entonces:
@@ -201,14 +227,118 @@
               </ul>
             </li>
           </ul>
-          <pre class="fragment"><code data-trim>
-            ab -l -c2 -n600 http://localhost:8080/
-          </code>
-          </pre>
           </section>
           <section>
-            <h2>Prueba 1</h2>
-            Los 
+            <h3>Resultados de la prueba con un servidor</h3>
+          <pre><code data-trim>
+            ab -l -c2 -n600 http://localhost:8080/
+          </code></pre>
+            <table>
+              <tr>
+                <td><img src="graphs/single-server.jpg" /></td>
+                <td><img src="graphs/single-server-2.jpg" /></td>
+              </tr>
+            </table>
+          </section>
+          <section>
+          <h2>Escalando horizontalmente</h2>
+          </section>
+          <section>
+            <h3>Docker para la prueba en cluster</h3>
+            <pre><code data-trim class="yaml">
+              version: '3'
+              services:
+                app:
+                  image: php:7-apache
+                  volumes:
+                    - ./www-conf/apache-tune.conf:/etc/apache2/conf-enabled/apache-tune.conf
+                    - ./www:/var/www/html
+                  environment:
+                    VIRTUAL_HOST: php-scale.probe
+                lb:
+                  image: jwilder/nginx-proxy
+                  ports:
+                    - "8090:80"
+                  volumes:
+                    - ./www-conf/nginx-proxy.conf:/etc/nginx/conf.d/custom_proxy.conf
+                    - /var/run/docker.sock:/tmp/docker.sock:ro
+            </code></pre>
+            <small>El mismo servidor y configuración utilizado en la prueba inicial, pero con un load balancer por delante.</small>
+          </section>
+          <section>
+            <h3>Notas sobre la arquitectura basada en docker</h3>
+            <ul>
+              <li class="fragment fade-in-then-semi-out">Escalando la aplicación, automáticamente se reconfigura el load balancer.</li>
+              <li class="fragment fade-in-then-semi-out">El load balancer por defecto espera por un upstream hasta 60 segundos.
+                <ul>
+                  <li>Sabemos que con 10 clientes debería demorar hasta 10 segundos.</li>
+                  <li>Configuramos nginx para que espere hasta <strong>15 segundos</strong></li>
+                </ul></li>
+            <pre class="fragment"><code data-trim class="nginx" >
+              proxy_read_timeout 15;
+            </code></pre>
+            </ul>
+
+          </section>
+          <section>
+            <h3>Notas sobre la arquitectura basada en docker</h3>
+              Se inicia el servicio con:
+              <pre><code class="bash">docker-compose -f docker-compose.lb.yml up</code></pre>
+              Se escala con
+              <pre><code class="bash">docker-compose -f docker-compose.lb.yml up --scale app=2</code></pre>
+              Se prueba utilizando un nombre de host
+              <pre><code class="bash">curl -H 'Host: php-scale.probe' 'http://localhost:8090'</code></pre>
+              <small>Probaremos con escala 1, 2 y 10</small>
+          </section>
+          <section>
+            <h3>Resultados de la prueba del cluster</h3>
+          <pre><code data-trim>
+            ab -l -c10 -H 'Host: php-scale.probe' -n600 http://localhost:8090/
+          </code></pre>
+            <table>
+              <tr>
+                <td><img src="graphs/lb-multiple-servers.jpg" /></td>
+                <td><img src="graphs/lb-multiple-servers-2.jpg" /></td>
+              </tr>
+            </table>
+          </section>
+        </section>
+        <section>
+          <section>
+          <h1>Conclusiones</h1>
+          </section>
+          <section>
+            <h3>Conculsiones</h3>
+            <ul>
+              <li>Los problemas de disponibilidad en sitios de alta concurrencia pueden tener causas diversas:
+                <ul>
+                  <li>Load balancers con upstream lentos y timeouts inadecuados.</li>
+                  <li>Concurrencia del Application/Web Server.</li>
+                  <li>Tiempo de respuesta de las aplicacione y su consumo de recursos.</li>
+                </ul>
+              </li>
+              <li>Importancia de mantener estadísticas de las aplicaciones y servicios.</li>
+              <li>Retroalimentar con información estadística a desarrollo.</li>
+              <li>El escalamiento debería adaptarse: upscale y downscale.</li>
+            </ul>
+          </section>
+          <section>
+            <h3>Trabajos a futuro</h3>
+            <ul>
+              <li>Definir un esquema de monitoreo estadístico que permita:
+                <ul>
+                  <li>Automatizar el escalamiento.</li>
+                  <li>Independiente de la tecnología de virtualización/cloud subyascente</li>
+                  <li>Minimizar falsos positivos mediante la combinación de herramientas de monitoreo, estadísticas y Machine Learning</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+        </section>
+        <section>
+          <section>
+            <h2>¿Preguntas?</h2>
+            <h1 class="fragment">Gracias</h1>
           </section>
         </section>
 			</div>
@@ -226,7 +356,8 @@
 					{ src: 'plugin/markdown/marked.js' },
 					{ src: 'plugin/markdown/markdown.js' },
 					{ src: 'plugin/notes/notes.js', async: true },
-					{ src: 'plugin/highlight/highlight.js', async: true }
+					{ src: 'plugin/highlight/highlight.js', async: true },
+          { src: 'plugin/zoom-js/zoom.js', async: true }
 				]
 			});
 		</script>
